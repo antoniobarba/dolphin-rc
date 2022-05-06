@@ -12,7 +12,6 @@
 #include "Common/Swap.h"
 #include "VideoCommon/CPMemory.h"
 #include "VideoCommon/VertexLoaderBase.h"
-#include <unordered_map>
 
 struct CPState;
 class DataReader;
@@ -230,23 +229,8 @@ static DOLPHIN_FORCE_INLINE u32 RunCommand(const u8* data, u32 available, T& cal
           (cmdbyte & OpcodeDecoder::GX_PRIMITIVE_MASK) >> OpcodeDecoder::GX_PRIMITIVE_SHIFT);
       const u8 vat = cmdbyte & OpcodeDecoder::GX_VAT_MASK;
 
-      // Fast hack: I'm caching the results for vertex size to speed up the hot code path
-      static std::unordered_map<u32, u32> VertexSizeCache;
-      u32 Hash = (u32)(callback.GetCPState().vtx_desc.low.Hex) ^
-                 (u32)(vat);
-
-      u32& cachedVertexSize = VertexSizeCache[Hash];
-
-      if (cachedVertexSize == 0)
-      {
-        cachedVertexSize = VertexLoaderBase::GetVertexSize(callback.GetCPState().vtx_desc,
-                                                            callback.GetCPState().vtx_attr[vat]);
-      }
-
-      const u32 vertex_size = cachedVertexSize;
-      // End fast hack
-
-
+      const u32 vertex_size = VertexLoaderBase::GetVertexSize(callback.GetCPState().vtx_desc,
+                                                              callback.GetCPState().vtx_attr[vat]);
       const u16 num_vertices = Common::swap16(&data[1]);
 
       if (available < 3 + num_vertices * vertex_size)
