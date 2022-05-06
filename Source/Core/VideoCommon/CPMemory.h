@@ -213,6 +213,12 @@ struct fmt::formatter<TexComponentCount> : EnumFormatter<TexComponentCount::ST>
 
 struct TVtxDesc
 {
+
+  bool operator==(const TVtxDesc& other) const
+  {
+    return low.Hex == other.low.Hex && high.Hex == other.high.Hex;
+  }
+
   union Low
   {
     // false: not present
@@ -254,6 +260,23 @@ struct TVtxDesc
   Low low;
   High high;
 };
+
+namespace std
+{
+
+template <>
+struct hash<TVtxDesc>
+{
+  std::size_t operator()(const TVtxDesc& k) const
+  {
+    using std::hash;
+
+    return hash<u32>()(k.low.Hex) ^ (hash<u32>()(k.high.Hex) << 1);
+  }
+};
+
+}  // namespace std
+
 template <>
 struct fmt::formatter<TVtxDesc::Low>
 {
@@ -473,6 +496,11 @@ struct VAT
   UVAT_group1 g1;
   UVAT_group2 g2;
 
+  bool operator==(const VAT& other) const
+  {
+    return g0.Hex == other.g0.Hex && g1.Hex == other.g1.Hex && g2.Hex == other.g2.Hex;
+  }
+
   constexpr ColorComponentCount GetColorElements(size_t idx) const
   {
     switch (idx)
@@ -575,6 +603,24 @@ struct VAT
     }
   }
 };
+
+namespace std
+{
+
+template <>
+struct hash<VAT>
+{
+  std::size_t operator()(const VAT& k) const
+  {
+    using std::hash;
+
+    return ((hash<u32>()(k.g0.Hex) ^ (hash<u32>()(k.g1.Hex) << 1)) >> 1) ^
+           (hash<u32>()(k.g2.Hex) << 1);
+  }
+};
+
+}  // namespace std
+
 template <>
 struct fmt::formatter<VAT>
 {

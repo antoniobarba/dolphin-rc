@@ -22,6 +22,7 @@
 #include "VideoCommon/VertexLoader_Normal.h"
 #include "VideoCommon/VertexLoader_Position.h"
 #include "VideoCommon/VertexLoader_TextCoord.h"
+#include <unordered_map>
 
 #ifdef _M_X86_64
 #include "VideoCommon/VertexLoaderX64.h"
@@ -133,9 +134,37 @@ static void GetComponentSizes(const TVtxDesc& vtx_desc, const VAT& vtx_attr, Fun
 
 u32 VertexLoaderBase::GetVertexSize(const TVtxDesc& vtx_desc, const VAT& vtx_attr)
 {
-  u32 size = 0;
-  GetComponentSizes(vtx_desc, vtx_attr, [&size](u32 s) { size += s; });
-  return size;
+  typedef std::unordered_map<TVtxDesc, std::unordered_map<VAT, u32>> CacheType;
+  static CacheType Cache;
+  CacheType::iterator CacheLine = Cache.find(vtx_desc);
+
+  u32 Value = 0;
+  if (CacheLine == Cache.end())
+  {
+    // this call is expensive
+    GetComponentSizes(vtx_desc, vtx_attr, [&Value](u32 s) { Value += s; });
+
+    Cache[vtx_desc] = std::unordered_map<VAT, u32>();
+    Cache[vtx_desc][vtx_attr] = Value;
+  }
+  else
+  {
+    auto CachedValue = CacheLine->second.find(vtx_attr);
+
+    if (CachedValue == CacheLine->second.end())
+    {
+      // this call is expensive
+      GetComponentSizes(vtx_desc, vtx_attr, [&Value](u32 s) { Value += s; });
+
+      CacheLine->second[vtx_attr] = Value;
+    }
+    else
+    {
+      Value = CachedValue->second;
+    }
+  }
+  
+  return Value;
 }
 
 u32 VertexLoaderBase::GetVertexComponents(const TVtxDesc& vtx_desc, const VAT& vtx_attr)
